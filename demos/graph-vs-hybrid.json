@@ -1,0 +1,166 @@
+{
+  "title": "Context graph vs hybrid search: multi-hop demo",
+  "recorded": "2026-10-17",
+  "tenant": "ops",
+  "corpus": "data/corpus (15 internal policy documents)",
+  "models": {
+    "embeddings": "Qwen/Qwen3-Embedding-0.6B",
+    "llm": "qwen3:4b-instruct-2507-q4_K_M (Ollama)"
+  },
+  "how_to_run": {
+    "start": [
+      "uvicorn app.api.main:app --port 8000",
+      "streamlit run ui/graph.py --server.port 8502   # Policy Graph Chat (graph)",
+      "streamlit run ui/hybrid.py --server.port 8501  # Filings Chat (hybrid): set Workspace > Tenant to 'ops'"
+    ],
+    "cli": [
+      "python -m app.cli --tenant ops ask \"<question>\" --strategy hybrid",
+      "python -m app.cli --tenant ops ask \"<question>\" --strategy graph"
+    ],
+    "note": "Ask the same question in both apps side by side. Untick all documents so both search the whole tenant. Answers can vary slightly between runs (local 4B model); the retrieval difference is stable."
+  },
+  "questions": [
+    {
+      "id": "headline",
+      "question": "Which person, by name, must approve a Normal change to the Driver App, and how fast must its rollback plan complete?",
+      "expected_answer": "Sofia Martins (lead of the Edge team, which owns the Driver App) must approve it, together with the Site Reliability Engineering team. The rollback plan must complete within the Tier 1 recovery time objective: 1 hour.",
+      "hop_chain": [
+        {
+          "section": "Service Catalog §2.6 Driver App",
+          "fact": "Driver App is Tier 1, owned by the Edge team",
+          "how_reached": "hybrid seed (the question names the Driver App)"
+        },
+        {
+          "section": "Change Management Policy §3 Approvals by tier",
+          "fact": "Tier 1 Normal changes need the owning team's lead and SRE",
+          "how_reached": "hybrid seed"
+        },
+        {
+          "section": "Team Directory §1 Engineering teams",
+          "fact": "Edge team: lead Sofia Martins",
+          "how_reached": "graph: entity 'Edge team' mentioned in Service Catalog §2.6 -> defined in Team Directory §1"
+        },
+        {
+          "section": "Change Management Policy §6 Rollback",
+          "fact": "rollback must complete within the service's RTO (Backup and Recovery Standard §2)",
+          "how_reached": "hybrid seed"
+        },
+        {
+          "section": "Backup and Recovery Standard §2 Recovery objectives",
+          "fact": "Tier 1 RTO is 1 hour",
+          "how_reached": "graph: explicit reference 'Backup and Recovery Standard §2' in Change Management Policy §6"
+        }
+      ],
+      "point_out": [
+        "Hybrid answers 'the specific name of the person is not provided in the sources' and 'the exact time period is not specified': it never retrieved the Team Directory or Backup §2, because the question doesn't use their words (no 'lead', 'Sofia', 'RTO', '1 hour').",
+        "Graph names Sofia Martins and gives 1 hour, and each linked source shows why it was pulled in ('defines Edge team, mentioned in Service Catalog §2.6'; 'referenced from Change Management Policy §6').",
+        "Two kinds of hop in one answer: entity resolution (Driver App -> Edge team -> its lead) and an explicit cross-document reference (Change §6 -> Backup §2)."
+      ],
+      "captured_run": {
+        "hybrid": {
+          "retrieved_sections": [
+            "service-catalog §2.6",
+            "change-management-policy §6",
+            "change-management-policy §5",
+            "change-management-policy §3",
+            "change-management-policy §2",
+            "disaster-recovery-plan §3",
+            "change-management-policy §4",
+            "privacy-incident-procedure §1"
+          ],
+          "cited": [
+            "change-management-policy §6",
+            "change-management-policy §3"
+          ],
+          "answer": "A Normal change to the Driver App must be approved by the owning team's lead (the Edge team's lead), as the Driver App is a Tier 1 service and Tier 1 services require approval from the owning team's lead and the Site Reliability Engineering team [4]. However, the specific name of the person is not provided in the sources.\n\nThe rollback plan must complete within the service's recovery time objective (RTO), as set in the Backup and Recovery Standard §2, but the exact time period is not specified in the provided sources [2].\n\nTherefore, while the approval process is defined, the name of the individual and the specific duration of the rollback are not available in the sources. \n\nAnswer: The owning team's lead (Edge team's lead) must approve a Normal change to the Driver App, and the rollback plan must complete within the service's recovery time objective, as defined in the Backup and Recovery Standard §2 [4][2]. However, the name of the person and the exact duration of the rollback are not specified in the sources.",
+          "seconds": 6.4
+        },
+        "graph": {
+          "retrieved_sections": [
+            "service-catalog §2.6",
+            "change-management-policy §6",
+            "change-management-policy §5",
+            "change-management-policy §3",
+            "backup-and-recovery-standard §2  <- referenced from Change Management Policy §6 Rollback",
+            "service-catalog §1  <- defines Tier 1, mentioned in Service Catalog §2.6 Driver App",
+            "team-directory §1  <- defines Edge team, mentioned in Service Catalog §2.6 Driver App",
+            "incident-response-runbook §6  <- referenced from Change Management Policy §5 Emergency changes"
+          ],
+          "cited": [
+            "backup-and-recovery-standard §2",
+            "team-directory §1"
+          ],
+          "answer": "A Normal change to the Driver App must be approved by Sofia Martins, the lead of the Edge team, as the Edge team owns the Driver App [7]. \n\nThe rollback plan must complete within the service's recovery time objective (RTO), which is 1 hour, as defined in the Backup and Recovery Standard §2 for Tier 1 services [5]. \n\nThus, the rollback plan must complete within 1 hour [5]. \n\n| Person | Approval Requirement | Rollback Completion Time |\n|--------|------------------------|---------------------------|\n| Sofia Martins | Approval from the owning team's lead (Edge team) [7] | 1 hour [5] |",
+          "seconds": 4.8
+        }
+      }
+    },
+    {
+      "id": "backup-and-retention",
+      "question": "Is a 20-day-old copy of the Billing Service data still available to restore, and what has to happen to the restored records afterwards?",
+      "expected_answer": "Yes. The Billing Service is Tier 2 and Tier 2 backups are kept for 35 days, so a 20-day-old backup is still available. Restored data must be re-purged to the Data Retention Policy periods within 30 days (e.g. customer invoices are kept 7 years).",
+      "hop_chain": [
+        {
+          "section": "Service Catalog §2.3 Billing Service",
+          "fact": "Billing Service is Tier 2",
+          "how_reached": "hybrid seed"
+        },
+        {
+          "section": "Data Retention Policy §2 Retention periods",
+          "fact": "restored data must be re-purged within 30 days; invoices 7 years",
+          "how_reached": "hybrid seed"
+        },
+        {
+          "section": "Backup and Recovery Standard §3 Backup retention",
+          "fact": "Tier 1 and Tier 2 backups are kept 35 days",
+          "how_reached": "graph: explicit reference 'Backup and Recovery Standard §3' in Data Retention Policy §2"
+        }
+      ],
+      "point_out": [
+        "Hybrid says 'available' but its only backup source is Backup §1 (Purpose), which states no retention period: the 'yes' is unsupported.",
+        "Graph follows Data Retention §2 -> Backup §3 and justifies it: 35 days > 20 days.",
+        "Contrast with the easy phrasing ('How long are Billing Service backups kept...'): there hybrid finds Backup §3 on keywords alone. Graph wins when the question names the starting point, not the hop's vocabulary."
+      ],
+      "captured_run": {
+        "hybrid": {
+          "retrieved_sections": [
+            "service-catalog §2.3",
+            "backup-and-recovery-standard §4",
+            "data-retention-policy §2",
+            "change-management-policy §4",
+            "data-retention-policy §3",
+            "privacy-incident-procedure §1",
+            "backup-and-recovery-standard §1",
+            "disaster-recovery-plan §3"
+          ],
+          "cited": [
+            "service-catalog §2.3",
+            "data-retention-policy §2",
+            "backup-and-recovery-standard §1"
+          ],
+          "answer": "A 20-day-old copy of the Billing Service data is available to restore because the Billing Service is classified as a Tier 2 service [1], and Tier 2 services are subject to backup and recovery requirements under the Backup and Recovery Standard §1 [7]. According to the Data Retention Policy §3, restored data must be re-purged to the specified retention periods within 30 days [3]. Since the Billing Service is a Tier 2 service, and its data retention period is not explicitly stated in the sources, the restoration of data must follow the general data retention rules for records it contains—such as customer invoices (7 years), which are retained for 7 years [3].\n\nHowever, the policy specifies that *restored data must be re-purged to these periods within 30 days* [3], meaning that after restoration, the data must be re-purged to match the defined retention periods (e.g., 7 years for invoices), and this re-purging must occur within 30 days of restoration.\n\nTherefore, yes, a 20-day-old copy of the Billing Service data is available to restore, and after restoration, the records must be re-purged to their specified retention periods (e.g., 7 years for customer invoices) within 30 days [3].\n\n| Fact | Source |\n|------|--------|\n| 20-day-old copy of Billing Service data is available to restore | [1][7] |\n| Restored data must be re-purged to retention periods within 30 days | [3] |",
+          "seconds": 8.2
+        },
+        "graph": {
+          "retrieved_sections": [
+            "service-catalog §2.3",
+            "backup-and-recovery-standard §4",
+            "data-retention-policy §2",
+            "change-management-policy §4",
+            "service-catalog §1  <- defines Tier 2, mentioned in Service Catalog §2.3 Billing Service",
+            "team-directory §1  <- defines Payments team, mentioned in Service Catalog §2.3 Billing Service",
+            "backup-and-recovery-standard §3  <- referenced from Data Retention Policy §2 Retention periods",
+            "data-retention-policy §3"
+          ],
+          "cited": [
+            "service-catalog §2.3",
+            "data-retention-policy §2",
+            "backup-and-recovery-standard §3"
+          ],
+          "answer": "Yes, a 20-day-old copy of the Billing Service data is still available to restore.\n\nThe Billing Service is classified as a Tier 2 service [1]. According to the Backup and Recovery Standard §3, Tier 1 and Tier 2 backups are kept for 35 days [7]. Since 20 days is less than 35 days, the backup is still within the retention period and thus available for restoration.\n\nAfter restoration, the restored data must be re-purged to the retention periods specified in the Data Retention Policy §2 within 30 days [3]. Specifically:\n- Customer invoices: 7 years\n- Shipment records: 7 years\n- Driver GPS traces: 90 days\n- Support tickets: 3 years after closure\n- Application logs: 30 days\n\nTherefore, the restored records must be re-purged to these retention periods within 30 days [3].\n\n[1][7][3]",
+          "seconds": 5.9
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "lyft_2021": {
+    "company": "Lyft, Inc.",
+    "ticker": "LYFT",
+    "form": "10-K",
+    "fiscal_year": 2021,
+    "period_end": "2021-12-31"
+  },
+  "uber_2021": {
+    "company": "Uber Technologies, Inc.",
+    "ticker": "UBER",
+    "form": "10-K",
+    "fiscal_year": 2021,
+    "period_end": "2021-12-31"
+  },
+  "uber_10q_march_2022": {
+    "company": "Uber Technologies, Inc.",
+    "ticker": "UBER",
+    "form": "10-Q",
+    "fiscal_year": 2022,
+    "fiscal_quarter": 1,
+    "period_end": "2022-03-31"
+  },
+  "uber_10q_june_2022": {
+    "company": "Uber Technologies, Inc.",
+    "ticker": "UBER",
+    "form": "10-Q",
+    "fiscal_year": 2022,
+    "fiscal_quarter": 2,
+    "period_end": "2022-06-30"
+  },
+  "uber_10q_sept_2022": {
+    "company": "Uber Technologies, Inc.",
+    "ticker": "UBER",
+    "form": "10-Q",
+    "fiscal_year": 2022,
+    "fiscal_quarter": 3,
+    "period_end": "2022-09-30"
+  }
+}

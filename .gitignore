@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Runtime data: API/UI uploads, eval run outputs, local model cache
+data/uploads/
+evals/results/
+models/
+
+# Local config / editors
+.env
+.vscode/
+.idea/
+*.log

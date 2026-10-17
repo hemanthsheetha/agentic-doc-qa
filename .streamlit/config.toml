@@ -1,0 +1,11 @@
+[theme]
+base = "dark"
+primaryColor = "#d97757"
+backgroundColor = "#262624"
+secondaryBackgroundColor = "#1f1e1d"
+textColor = "#f5f4ef"
+font = "sans serif"
+
+[server]
+maxUploadSize = 50   # MB, matches the API's limit
+runOnSave = true     # rerun the app automatically when ui/ files change
