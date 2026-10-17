@@ -14,6 +14,23 @@ Every answer cites its sources (`[n]` → page or `§section`). Citations to sou
 **Stack:** FastAPI, Postgres with [ParadeDB `pg_search`](https://github.com/paradedb/paradedb) (BM25) and `pgvector`,
 `Qwen3-Embedding-0.6B` (local), `qwen3:4b-instruct` via Ollama (local), and Streamlit.
 
+## Architecture
+
+![agentic-doc-qa architecture](docs/architecture.png)
+
+**Ingestion** (1–3) runs as background jobs:
+1. Files are parsed and chunked: PDFs per page, markdown per section.
+2. Chunks are embedded on the GPU and upserted to Postgres. Unchanged chunks are skipped by hash.
+3. For markdown, the context graph is rebuilt from cross-references and resolved entities.
+
+**Queries** (4–7) also run as jobs:
+4. The router picks a strategy.
+5. Retrieval searches BM25 + vectors and, for graph or agent, follows graph links.
+6. The local LLM writes the answer.
+7. Citations to sources that weren't retrieved are dropped before the answer goes back.
+
+Everything shares one 6 GB GPU, and `GPU_LOCK` keeps the embedder and the LLM from running at the same time.
+
 ## Results
 
 Multi-hop set: `evals/golden_ops.jsonl`, 10 questions over 15 policy documents (tenant `ops`).
