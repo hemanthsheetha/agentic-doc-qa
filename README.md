@@ -142,6 +142,13 @@ Recorded runs of both, with sources and full answers, are in `demos/graph-vs-hyb
 specifically helps (aggregation, justified multi-step reasoning) and two agent demo questions, see
 [docs/agent-evaluation.md](docs/agent-evaluation.md).
 
+## Credits
+
+Designed and directed by [Hemanth Sheetha](https://github.com/hemanthsheetha). All architecture, product and
+evaluation decisions were his. These include the choice of strategies, the local model stack, the tenant and API
+design, the UI, and what counts as good enough. Implementation was pair-programmed with Claude (Anthropic) as an AI
+coding assistant.
+
 ## Configuration
 
 Set through environment variables: `DATABASE_URL` (default `postgresql://docqa:docqa@localhost:5432/docqa`),
